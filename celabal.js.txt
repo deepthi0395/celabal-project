@@ -1,0 +1,342 @@
+const express = require("express");
+const path = require("path");
+const { open } = require("sqlite");
+const sqlite3 = require("sqlite3");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+const dbPath = path.join(__dirname, "elearning.db");
+const app = express();
+
+app.use(express.json());
+
+let db = null;
+
+const initializeDBAndServer = async () => {
+  try {
+    db = await open({ filename: dbPath, driver: sqlite3.Database });
+    app.listen(3000, () => {
+      console.log("Server Running at http://localhost:3000/");
+    });
+  } catch (e) {
+    console.log(`DB Error: ${e.message}`);
+    process.exit(-1);
+  }
+};
+initializeDBAndServer();
+
+const teacherAuthenticateAuthorizationToken = (request, response, next) => {
+  let jwtToken;
+  const authHeader = request.headers["authorization"];
+  if (authHeader !== undefined) {
+    jwtToken = authHeader.split(" ")[1];
+  }
+  if (jwtToken === undefined) {
+    response.status(401);
+    response.send("Invalid JWT Token");
+  } else {
+    jwt.verify(jwtToken, "MY_SECRET_TOKEN", async (error, payload) => {
+      if (error) {
+        response.status(401);
+        response.send("Invalid JWT Token");
+      } else {
+        request.name = payload.name;
+        //console.log(request.name);
+        const decodedToke = jwt.decode(jwtToken);
+        const values = Object.values(decodedToke);
+        const teacherContains = values.includes("teacher");
+        if (teacherContains === true) {
+          next();
+        } else {
+          response.status(400);
+          response.send("Not A teacher");
+        }
+      }
+    });
+  }
+};
+
+const studentAuthenticateAuthorizationToken = (request, response, next) => {
+  let jwtToken;
+  const authHeader = request.headers["authorization"];
+  if (authHeader !== undefined) {
+    jwtToken = authHeader.split(" ")[1];
+  }
+  if (jwtToken === undefined) {
+    response.status(401);
+    response.send("Invalid JWT Token");
+  } else {
+    jwt.verify(jwtToken, "MY_SECRET_TOKEN", async (error, payload) => {
+      if (error) {
+        response.status(401);
+        response.send("Invalid JWT Token");
+      } else {
+        request.name = payload.name;
+        //console.log(request.name);
+        const decodedToke = jwt.decode(jwtToken);
+        const values = Object.values(decodedToke);
+        const studentContains = values.includes("student");
+        if (studentContains === true) {
+          next();
+        } else {
+          response.status(400);
+          response.send("not a register student");
+        }
+      }
+    });
+  }
+};
+
+//student register API
+app.post("/studentRegister/", async (request, response) => {
+  const { name, email, password } = request.body;
+  const hashedPassword = await bcrypt.hash(request.body.password, 10);
+  const selectStudentQuery = `SELECT * FROM user_table WHERE name = '${name}'`;
+  const dbStudentUser = await db.get(selectStudentQuery);
+  if (dbStudentUser === undefined) {
+    const createStudentQuery = `
+      INSERT INTO 
+        user_table ( name, email , password) 
+      VALUES 
+        (
+          '${name}',
+          '${email}',
+          '${hashedPassword}'
+        )`;
+    console.log(hashedPassword);
+    const dbResponse = await db.run(createStudentQuery);
+    const newUserId = dbResponse.lastID;
+    response.send(`Created new student with ${newUserId}`);
+  } else {
+    response.status = 400;
+    response.send("Student already exists");
+  }
+});
+//student login api
+app.post("/studentLogin/", async (request, response) => {
+  const { name, password } = request.body;
+  const selectStudentQuery = `SELECT * FROM user_table WHERE name = '${name}'`;
+  //console.log(selectStudentQuery);
+  const dbStudent = await db.get(selectStudentQuery);
+  if (dbStudent === undefined) {
+    response.status(400);
+    response.send("Invalid User");
+  } else {
+    const isPasswordMatched = await bcrypt.compare(
+      password,
+      dbStudent.password
+    );
+    console.log(password, dbStudent.password, isPasswordMatched);
+    if (isPasswordMatched === true) {
+      const payload = {
+        name: name,
+        type: "student",
+      };
+      const jwtToken = jwt.sign(payload, "MY_SECRET_TOKEN");
+      response.send({ jwtToken });
+    } else {
+      response.status(400);
+      response.send("Invalid Password");
+    }
+  }
+});
+
+//teacher register api
+app.post("/teacherRegister/", async (request, response) => {
+  const { name, email, password, course } = request.body;
+  const hashedPassword = await bcrypt.hash(request.body.password, 10);
+  //console.log(hashedPassword);
+  const selectTeacherQuery = `SELECT * FROM teacher_Table WHERE name = '${name}'`;
+  const dbUser = await db.get(selectTeacherQuery);
+  if (dbUser === undefined) {
+    const createTeacherQuery = `
+      INSERT INTO 
+         teacher_Table (name , email , password , course)
+      VALUES 
+        (
+          '${name}',
+          '${email}',
+          '${hashedPassword}',
+          '${course}'
+        )`;
+    const dbResponse = await db.run(createTeacherQuery);
+    const newTeacherId = dbResponse.lastID;
+    response.send(`Created new teacher with ${newTeacherId}`);
+  } else {
+    response.status = 400;
+    response.send("Teacher already exists");
+  }
+});
+
+//teacherLogin
+app.post("/teacherLogin/", async (request, response) => {
+  const { name, password } = request.body;
+  const selectTeacherQuery = `SELECT * FROM teacher_Table WHERE name = '${name}'`;
+  //console.log(selectStudentQuery);
+  const dbTeacher = await db.get(selectTeacherQuery);
+  if (dbTeacher === undefined) {
+    response.status(400);
+    response.send("Invalid User");
+  } else {
+    const isPasswordMatched = await bcrypt.compare(
+      password,
+      dbTeacher.password
+    );
+    //console.log(password, dbTeacher.password, isPasswordMatched);
+    if (isPasswordMatched === true) {
+      const payload = {
+        name: name,
+        type: "teacher",
+      };
+      const jwtToken = jwt.sign(payload, "MY_SECRET_TOKEN");
+      response.send({ jwtToken });
+    } else {
+      response.status(400);
+      response.send("Invalid Password");
+    }
+  }
+});
+
+//teacher subject
+app.post(
+  "/addingSubject/",
+  teacherAuthenticateAuthorizationToken,
+  async (request, response) => {
+    const addingSubject = request.body;
+    const { teacher_id, subject } = addingSubject;
+    //const { teacher_id, subject } = jwt.decode(token);
+    console.log(jwt.decode(token));
+    const subjectQuery = `
+      INSERT INTO 
+        subject_table (teacher_id , subject ) 
+      VALUES 
+        (
+          '${teacher_id}',
+          '${subject}'
+        )`;
+    const dbResponse = await db.run(subjectQuery);
+    //const teacher_id = dbResponse.lastID;
+    response.send("subject Added Successfully");
+  }
+);
+
+//adding material to particular student by teacher
+app.post(
+  "/addingMaterial/",
+  teacherAuthenticateAuthorizationToken,
+  async (request, response) => {
+    const addingMaterialQuery = request.body;
+    const { user_id, teacher_id, subject_id, material } = addingMaterialQuery;
+    const createMappingQuery = `
+      INSERT INTO 
+        student_subject_mapping_table ( user_id , teacher_id ,subject_id  , material ) 
+      VALUES 
+        (  '${user_id}',
+          '${teacher_id}',
+          '${subject_id}',
+          '${material}'
+        )`;
+    const mappingResponse = await db.run(createMappingQuery);
+    //const teacher_id = dbResponse.lastID;
+    response.send("material Added Successfully");
+  }
+);
+
+//Adding marks by teacher
+app.post(
+  "/addingMarks/",
+  teacherAuthenticateAuthorizationToken,
+  async (request, response) => {
+    const addingMarksQuery = request.body;
+    // console.log("request data " + request.body, addingMarksQuery);
+    const { user_id, teacher_id, subject_id, marks } = addingMarksQuery;
+    // console.log("before query :  " + user_id, teacher_id, subject_id, marks);
+    const createMarksQuery = `
+      INSERT INTO 
+        student_subject_marks ( user_id , teacher_id ,subject_id  , marks ) 
+      VALUES 
+        (  '${user_id}',
+          '${teacher_id}',
+          '${subject_id}',
+          '${marks}'
+        )`;
+    console.log("after insert : " + createMarksQuery);
+    const marksResponse = await db.run(createMarksQuery);
+    //const material_id = mappingResponse.lastID;
+    response.send("marks Added Successfully");
+  }
+);
+
+//retrieve marks and subject by student
+app.get(
+  "/getMarks/:user_id",
+  studentAuthenticateAuthorizationToken,
+  async (request, response) => {
+    const { user_id } = request.params;
+    //console.log("user_id  :" + user_id);
+    const getMarksQuery = `
+     SELECT user_table.name ,subject_table.subject,  student_subject_marks.marks FROM 
+	student_subject_marks  
+	INNER JOIN user_table ON student_subject_marks.user_id = user_table.user_id 
+	INNER JOIN subject_table ON student_subject_marks.subject_id = subject_table.subject_id
+    WHERE user_table.user_id = ${user_id};`;
+    //console.log("query  :" + getMarksQuery);
+    const marks = await db.all(getMarksQuery);
+    response.send(marks);
+  }
+);
+
+//retrieving student profile
+app.get(
+  "/studentProfile/:user_id/",
+  studentAuthenticateAuthorizationToken,
+  async (request, response) => {
+    const { user_id } = request.params;
+    //console.log("user_id :" + user_id);
+    const getStudentQuery = `
+       SELECT user_table.name,
+       subject_table.subject,student_subject_mapping_table.material 
+       FROM 
+        student_subject_mapping_table 
+	    INNER JOIN user_table ON student_subject_mapping_table.user_id = user_table.user_id 
+        INNER JOIN subject_table ON student_subject_mapping_table.subject_id = subject_table.subject_id
+        WHERE user_table.user_id = ${user_id}`;
+    //console.log("user_id_query :" + user_id);
+    const student = await db.all(getStudentQuery);
+    response.send(student);
+  }
+);
+
+//retrieve subject of student
+app.get(
+  "/getSubject/:user_id",
+  studentAuthenticateAuthorizationToken,
+  async (request, response) => {
+    const { user_id } = request.params;
+    const getSubjectQuery = `
+      SELECT user_table.name AS student , teacher_table.name as teacher, subject_table.subject AS subject FROM 
+	student_subject_mapping_table 
+	INNER JOIN user_table ON student_subject_mapping_table.user_id = user_table.user_id 
+    INNER JOIN subject_table ON student_subject_mapping_table.subject_id = subject_table.subject_id
+    INNER JOIN teacher_table ON student_subject_mapping_table.teacher_id = teacher_table.teacher_id
+    WHERE user_table.user_id = ${user_id};`;
+    const subject = await db.all(getSubjectQuery);
+    response.send(subject);
+  }
+);
+
+//getting available sub for student
+
+app.get(
+  "/subjects/",
+  studentAuthenticateAuthorizationToken,
+  async (request, response) => {
+    const getSubjectQuery = `
+    SELECT
+      teacher_table.course
+    FROM
+      teacher_table`;
+    const subject = await db.all(getSubjectQuery);
+    response.send(subject);
+  }
+);

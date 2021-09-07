@@ -1,0 +1,87 @@
+###
+
+POST http://localhost:3000/studentRegister/
+Content-Type: application/json
+
+{ 
+    "name": "tejaswini",
+    "email":"tejaswini0705@gmail.com",
+    "password": "tejaswini0705"
+}
+
+###
+POST http://localhost:3000/studentLogin/
+Content-Type: application/json
+
+{ 
+    "name": "ramesh",
+    "password": "ramesh995"
+}
+
+###
+POST http://localhost:3000/teacherRegister/
+Content-Type: application/json
+
+{ 
+    "name": "Alex",
+    "email":"Alex@gmail.com",
+    "password": "AlexMachine@Learning",
+    "course" : "Machine Learning"
+}
+
+###
+POST http://localhost:3000/teacherLogin/
+Content-Type: application/json
+
+{ 
+    "name": "Alex",   
+    "password": "AlexMachine@Learning"
+}
+
+
+###
+POST http://localhost:3000/addingSubject/
+Content-Type: application/json
+Authorization: Bearer yJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiQWxleCIsInR5cGUiOiJ0ZWFjaGVyIiwiaWF0IjoxNjMwOTA5NzI3fQ.5tV95TP5SdMyVB6VGA3UUcqLuHUElwgI-YdunLX3WSo
+
+{
+    "teacher_id" : "14",
+    "subject" : "computer vision"
+}
+
+###
+POST http://localhost:3000/addingMaterial/
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiQWxleCIsInR5cGUiOiJ0ZWFjaGVyIiwiaWF0IjoxNjMwOTA5NzI3fQ.5tV95TP5SdMyVB6VGA3UUcqLuHUElwgI-YdunLX3WSo
+
+{   "user_id" : "15" ,
+    "teacher_id" : "14",
+    "subject_id" : "22" ,
+    "material" : "deep-learning-1"
+}
+
+###
+POST http://localhost:3000/addingMarks/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiQWxleCIsInR5cGUiOiJ0ZWFjaGVyIiwiaWF0IjoxNjMwOTA5NzI3fQ.5tV95TP5SdMyVB6VGA3UUcqLuHUElwgI-YdunLX3WSo
+
+{   "user_id" : "11" ,
+    "teacher_id" : "11",
+    "subject_id" : "13",
+    "marks" : "75"
+}
+
+###
+GET http://localhost:3000/getSubject/11/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoicmFtZXNoIiwidHlwZSI6InN0dWRlbnQiLCJpYXQiOjE2MzA5MDk0MTl9.u5A7cXsXhbxIq9NEE-7jTA0uHaXVpDgva1vj45rAw5E
+
+###
+GET http://localhost:3000/getMarks/11/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoicmFtZXNoIiwidHlwZSI6InN0dWRlbnQiLCJpYXQiOjE2MzA5MDk0MTl9.u5A7cXsXhbxIq9NEE-7jTA0uHaXVpDgva1vj45rAw5E
+
+###
+GET  http://localhost:3000/studentProfile/11/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoicmFtZXNoIiwidHlwZSI6InN0dWRlbnQiLCJpYXQiOjE2MzA5MDk0MTl9.u5A7cXsXhbxIq9NEE-7jTA0uHaXVpDgva1vj45rAw5E
+
+###
+GET http://localhost:3000/subjects/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoicmFtZXNoIiwidHlwZSI6InN0dWRlbnQiLCJpYXQiOjE2MzA5MDk0MTl9.u5A7cXsXhbxIq9NEE-7jTA0uHaXVpDgva1vj45rAw5E
